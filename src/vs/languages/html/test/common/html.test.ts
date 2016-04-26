@@ -16,7 +16,10 @@ import {TextModel} from 'vs/editor/common/model/textModel';
 import {Range} from 'vs/editor/common/core/range';
 import {MockModeService} from 'vs/editor/test/common/mocks/mockModeService';
 import {NULL_THREAD_SERVICE} from 'vs/platform/test/common/nullThreadService';
-import {createInstantiationService} from 'vs/platform/instantiation/common/instantiationService';
+import {IThreadService} from 'vs/platform/thread/common/thread';
+import {IModeService} from 'vs/editor/common/services/modeService';
+import {ServiceCollection} from 'vs/platform/instantiation/common/serviceCollection';
+import {InstantiationService} from 'vs/platform/instantiation/common/instantiationService';
 import {HTMLMode} from 'vs/languages/html/common/html';
 import htmlWorker = require('vs/languages/html/common/htmlWorker');
 import {MockTokenizingMode} from 'vs/editor/test/common/mocks/mockMode';
@@ -93,10 +96,10 @@ suite('Colorizing - HTML', () => {
 	(function() {
 		let threadService = NULL_THREAD_SERVICE;
 		let modeService = new HTMLMockModeService();
-		let inst = createInstantiationService({
-			threadService: threadService,
-			modeService: modeService
-		});
+		let services = new ServiceCollection();
+		services.set(IThreadService, threadService);
+		services.set(IModeService, modeService);
+		let inst = new InstantiationService(services);
 		threadService.setInstantiationService(inst);
 
 		_mode = new HTMLMode<htmlWorker.HTMLWorker>(
@@ -480,7 +483,7 @@ suite('Colorizing - HTML', () => {
 
 	test('Tag with Attributes', () => {
 		modesUtil.assertTokenization(tokenizationSupport, [{
-			line: '<abc foo="bar" bar="foo">',
+			line: '<abc foo="bar" bar=\'foo\'>',
 			tokens: [
 				{ startIndex:0, type: DELIM_START },
 				{ startIndex:1, type: getTag('abc') },
@@ -492,6 +495,25 @@ suite('Colorizing - HTML', () => {
 				{ startIndex:15, type: ATTRIB_NAME },
 				{ startIndex:18, type: DELIM_ASSIGN },
 				{ startIndex:19, type: ATTRIB_VALUE },
+				{ startIndex:24, type: DELIM_START }
+			]}
+		]);
+	});
+
+	test('Tag with Attributes, no quotes', () => {
+		modesUtil.assertTokenization(tokenizationSupport, [{
+			line: '<abc foo=bar bar=help-me>',
+			tokens: [
+				{ startIndex:0, type: DELIM_START },
+				{ startIndex:1, type: getTag('abc') },
+				{ startIndex:4, type: '' },
+				{ startIndex:5, type: ATTRIB_NAME },
+				{ startIndex:8, type: DELIM_ASSIGN },
+				{ startIndex:9, type: ATTRIB_VALUE },
+				{ startIndex:12, type: '' },
+				{ startIndex:13, type: ATTRIB_NAME },
+				{ startIndex:16, type: DELIM_ASSIGN },
+				{ startIndex:17, type: ATTRIB_VALUE },
 				{ startIndex:24, type: DELIM_START }
 			]}
 		]);

@@ -48,7 +48,7 @@ import {IWorkbenchEditorService} from 'vs/workbench/services/editor/common/edito
 import {IViewletService} from 'vs/workbench/services/viewlet/common/viewletService';
 import {Range} from 'vs/editor/common/core/range';
 import {IStorageService} from 'vs/platform/storage/common/storage';
-import {IConfigurationService, IConfigurationServiceEvent, ConfigurationServiceEventTypes} from 'vs/platform/configuration/common/configuration';
+import {IConfigurationService} from 'vs/platform/configuration/common/configuration';
 import {IContextViewService} from 'vs/platform/contextview/browser/contextView';
 import {IEventService} from 'vs/platform/event/common/event';
 import {IInstantiationService} from 'vs/platform/instantiation/common/instantiation';
@@ -56,7 +56,6 @@ import {IMessageService} from 'vs/platform/message/common/message';
 import {ISearchService} from 'vs/platform/search/common/search';
 import {IProgressService} from 'vs/platform/progress/common/progress';
 import {IWorkspaceContextService} from 'vs/platform/workspace/common/workspace';
-import {ISelection, StructuredSelection} from 'vs/platform/selection/common/selection';
 import {IKeybindingService, IKeybindingContextKey} from 'vs/platform/keybinding/common/keybindingService';
 import {ITelemetryService} from 'vs/platform/telemetry/common/telemetry';
 import {KeyCode, CommonKeybindings} from 'vs/base/common/keyCodes';
@@ -685,7 +684,7 @@ export class SearchViewlet extends Viewlet {
 
 		this.toUnbind.push(this.eventService.addListener(FileEventType.FILE_CHANGES, (e) => this.onFilesChanged(e)));
 		this.toUnbind.push(this.eventService.addListener(WorkbenchEventType.UNTITLED_FILE_DELETED, (e) => this.onUntitledFileDeleted(e)));
-		this.toUnbind.push(this.configurationService.addListener(ConfigurationServiceEventTypes.UPDATED, (e: IConfigurationServiceEvent) => this.onConfigurationUpdated(e.config)));
+		this.toUnbind.push(this.configurationService.onDidUpdateConfiguration(e => this.onConfigurationUpdated(e.config)).dispose);
 	}
 
 	private onConfigurationUpdated(configuration: any): void {
@@ -1470,10 +1469,6 @@ export class SearchViewlet extends Viewlet {
 				this.viewModel.remove(matches[i]);
 			}
 		}
-	}
-
-	public getSelection(): ISelection {
-		return new StructuredSelection(this.tree.getSelection());
 	}
 
 	public getActions(): IAction[] {

@@ -322,7 +322,7 @@ export class ExtHostDocumentData extends MirrorModel2 {
 		}
 
 		if (line < 0 || line >= this._lines.length) {
-			throw new Error('Illegal value ' + line + ' for `line`');
+			throw new Error('Illegal value for `line`');
 		}
 
 		let result = this._textLines[line];
@@ -331,7 +331,9 @@ export class ExtHostDocumentData extends MirrorModel2 {
 			const text = this._lines[line];
 			const firstNonWhitespaceCharacterIndex = /^(\s*)/.exec(text)[1].length;
 			const range = new Range(line, 0, line, text.length);
-			const rangeIncludingLineBreak = new Range(line, 0, line + 1, 0);
+			const rangeIncludingLineBreak = line < this._lines.length - 1
+				? new Range(line, 0, line + 1, 0)
+				: range;
 
 			result = Object.freeze({
 				lineNumber: line,
@@ -612,6 +614,9 @@ export class MainThreadDocuments {
 			return input.resolve(true).then(model => {
 				if (input.getResource().toString() !== uri.toString()) {
 					throw new Error(`expected URI ${uri.toString() } BUT GOT ${input.getResource().toString() }`);
+				}
+				if (!this._modelIsSynced[uri.toString()]) {
+					throw new Error(`expected URI ${uri.toString()} to have come to LIFE`);
 				}
 				return this._proxy._acceptModelDirty(uri.toString()); // mark as dirty
 			}).then(() => {

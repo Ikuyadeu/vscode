@@ -6,6 +6,7 @@
 
 import nls = require('vs/nls');
 import {TPromise} from 'vs/base/common/winjs.base';
+import {IDisposable} from 'vs/base/common/lifecycle';
 import paths = require('vs/base/common/paths');
 import encoding = require('vs/base/node/encoding');
 import errors = require('vs/base/common/errors');
@@ -14,7 +15,7 @@ import uri from 'vs/base/common/uri';
 import timer = require('vs/base/common/timer');
 import {IFileService, IFilesConfiguration, IResolveFileOptions, IFileStat, IContent, IImportResult, IResolveContentOptions, IUpdateContentOptions} from 'vs/platform/files/common/files';
 import {FileService as NodeFileService, IFileServiceOptions, IEncodingOverride} from 'vs/workbench/services/files/node/fileService';
-import {IConfigurationService, IConfigurationServiceEvent, ConfigurationServiceEventTypes} from 'vs/platform/configuration/common/configuration';
+import {IConfigurationService} from 'vs/platform/configuration/common/configuration';
 import {IEventService} from 'vs/platform/event/common/event';
 import {IWorkspaceContextService} from 'vs/platform/workspace/common/workspace';
 import {Action} from 'vs/base/common/actions';
@@ -31,7 +32,7 @@ export class FileService implements IFileService {
 
 	private raw: IFileService;
 
-	private configurationChangeListenerUnbind: () => void;
+	private configurationChangeListenerUnbind: IDisposable;
 
 	constructor(
 		private configurationService: IConfigurationService,
@@ -79,7 +80,7 @@ export class FileService implements IFileService {
 				message: nls.localize('netVersionError', "The Microsoft .NET Framework 4.5 is required. Please follow the link to install it."),
 				actions: [
 					new Action('install.net', nls.localize('installNet', "Download .NET Framework 4.5"), null, true, () => {
-						shell.openExternal('http://go.microsoft.com/fwlink/?LinkId=786533');
+						shell.openExternal('https://go.microsoft.com/fwlink/?LinkId=786533');
 
 						return TPromise.as(true);
 					})
@@ -91,7 +92,7 @@ export class FileService implements IFileService {
 	private registerListeners(): void {
 
 		// Config Changes
-		this.configurationChangeListenerUnbind = this.configurationService.addListener(ConfigurationServiceEventTypes.UPDATED, (e: IConfigurationServiceEvent) => this.onConfigurationChange(e.config));
+		this.configurationChangeListenerUnbind = this.configurationService.onDidUpdateConfiguration(e => this.onConfigurationChange(e.config));
 	}
 
 	private onConfigurationChange(configuration: IFilesConfiguration): void {
@@ -104,6 +105,10 @@ export class FileService implements IFileService {
 
 	public resolveFile(resource: uri, options?: IResolveFileOptions): TPromise<IFileStat> {
 		return this.raw.resolveFile(resource, options);
+	}
+
+	public existsFile(resource: uri): TPromise<boolean> {
+		return this.raw.existsFile(resource);
 	}
 
 	public resolveContent(resource: uri, options?: IResolveContentOptions): TPromise<IContent> {
@@ -215,7 +220,7 @@ export class FileService implements IFileService {
 
 		// Listeners
 		if (this.configurationChangeListenerUnbind) {
-			this.configurationChangeListenerUnbind();
+			this.configurationChangeListenerUnbind.dispose();
 			this.configurationChangeListenerUnbind = null;
 		}
 

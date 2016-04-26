@@ -2949,6 +2949,7 @@ export interface IActionDescriptor {
 export interface IEditorActionDescriptorData {
 	id:string;
 	label:string;
+	alias?:string;
 }
 
 export type IEditorActionContributionCtor = IConstructorSignature2<IEditorActionDescriptorData, ICommonCodeEditor, IEditorContribution>;

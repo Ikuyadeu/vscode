@@ -100,7 +100,7 @@ function renderRenameBox(debugService: debug.IDebugService, contextViewService: 
 			if (element instanceof model.Expression && renamed && inputBox.value) {
 				debugService.renameWatchExpression(element.getId(), inputBox.value).done(null, errors.onUnexpectedError);
 			} else if (element instanceof model.Expression && !element.name) {
-				debugService.clearWatchExpressions(element.getId());
+				debugService.removeWatchExpressions(element.getId());
 			} else if (element instanceof model.FunctionBreakpoint && renamed && inputBox.value) {
 				debugService.renameFunctionBreakpoint(element.getId(), inputBox.value).done(null, errors.onUnexpectedError);
 			} else if (element instanceof model.FunctionBreakpoint && !element.name) {
@@ -211,17 +211,8 @@ export class CallStackDataSource implements tree.IDataSource {
 			return this.getThreadChildren(element);
 		}
 
-		const threads = (<model.Model> element).getThreads();
-		const threadsArray: debug.IThread[] = [];
-		Object.keys(threads).forEach(threadId => {
-			threadsArray.push(threads[threadId]);
-		});
-
-		if (threadsArray.length === 1) {
-			return this.getThreadChildren(threadsArray[0]);
-		} else {
-			return TPromise.as(threadsArray);
-		}
+		const threads = (<model.Model>element).getThreads();
+		return TPromise.as(Object.keys(threads).map(ref => threads[ref]));
 	}
 
 	private getThreadChildren(thread: debug.IThread): TPromise<any> {
@@ -730,7 +721,7 @@ export class WatchExpressionsController extends BaseDebugController {
 		const element = tree.getFocus();
 		if (element instanceof model.Expression) {
 			const we = <model.Expression> element;
-			this.debugService.clearWatchExpressions(we.getId());
+			this.debugService.removeWatchExpressions(we.getId());
 
 			return true;
 		}
@@ -905,7 +896,7 @@ export class BreakpointsRenderer implements tree.IRenderer {
 	public renderElement(tree: tree.ITree, element: any, templateId: string, templateData: any): void {
 		templateData.toDisposeBeforeRender = lifecycle.dispose(templateData.toDisposeBeforeRender);
 		templateData.toDisposeBeforeRender.push(dom.addStandardDisposableListener(templateData.checkbox, 'change', (e) => {
-			this.debugService.toggleEnablement(element);
+			this.debugService.enableOrDisableBreakpoints(!element.enabled, element);
 		}));
 
 		if (templateId === BreakpointsRenderer.EXCEPTION_BREAKPOINT_TEMPLATE_ID) {
@@ -942,7 +933,14 @@ export class BreakpointsRenderer implements tree.IRenderer {
 		data.filePath.textContent = labels.getPathLabel(paths.dirname(breakpoint.source.uri.fsPath), this.contextService);
 		data.checkbox.checked = breakpoint.enabled;
 		data.actionBar.context = breakpoint;
-		if (breakpoint.condition) {
+
+		const debugActive = this.debugService.state === debug.State.Running || this.debugService.state === debug.State.Stopped;
+		if (debugActive && !breakpoint.verified) {
+			tree.addTraits('disabled', [breakpoint]);
+			if (breakpoint.message) {
+				data.breakpoint.title = breakpoint.message;
+			}
+		} else if (breakpoint.condition) {
 			data.breakpoint.title = breakpoint.condition;
 		}
 	}
@@ -989,7 +987,7 @@ export class BreakpointsController extends BaseDebugController {
 	protected onSpace(tree: tree.ITree, event: IKeyboardEvent): boolean {
 		super.onSpace(tree, event);
 		const element = <debug.IEnablement>tree.getFocus();
-		this.debugService.toggleEnablement(element).done(null, errors.onUnexpectedError);
+		this.debugService.enableOrDisableBreakpoints(!element.enabled, element).done(null, errors.onUnexpectedError);
 
 		return true;
 	}
@@ -998,9 +996,7 @@ export class BreakpointsController extends BaseDebugController {
 	protected onDelete(tree: tree.ITree, event: IKeyboardEvent): boolean {
 		const element = tree.getFocus();
 		if (element instanceof model.Breakpoint) {
-			const bp = <model.Breakpoint> element;
-			this.debugService.toggleBreakpoint({ uri: bp.source.uri, lineNumber: bp.lineNumber }).done(null, errors.onUnexpectedError);
-
+			this.debugService.removeBreakpoints((<model.Breakpoint> element).getId()).done(null, errors.onUnexpectedError);
 			return true;
 		} else if (element instanceof model.FunctionBreakpoint) {
 			const fbp = <model.FunctionBreakpoint> element;

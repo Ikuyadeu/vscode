@@ -19,7 +19,7 @@ import {IFilesConfiguration, IFileOperationResult, FileOperationResult, AutoSave
 import {IInstantiationService} from 'vs/platform/instantiation/common/instantiation';
 import {ILifecycleService} from 'vs/platform/lifecycle/common/lifecycle';
 import {IEventService} from 'vs/platform/event/common/event';
-import {IConfigurationService, IConfigurationServiceEvent, ConfigurationServiceEventTypes} from 'vs/platform/configuration/common/configuration';
+import {IConfigurationService} from 'vs/platform/configuration/common/configuration';
 import {ITelemetryService} from 'vs/platform/telemetry/common/telemetry';
 
 /**
@@ -76,11 +76,11 @@ export abstract class TextFileService implements ITextFileService {
 	private registerListeners(): void {
 
 		// Lifecycle
-		this.lifecycleService.addBeforeShutdownParticipant(this);
+		this.lifecycleService.onWillShutdown(event => event.veto(this.beforeShutdown()));
 		this.lifecycleService.onShutdown(this.dispose, this);
 
 		// Configuration changes
-		this.listenerToUnbind.push(this.configurationService.addListener(ConfigurationServiceEventTypes.UPDATED, (e: IConfigurationServiceEvent) => this.onConfigurationChange(e.config)));
+		this.listenerToUnbind.push(this.configurationService.onDidUpdateConfiguration(e => this.onConfigurationChange(e.config)).dispose);
 
 		// Editor focus change
 		window.addEventListener('blur', () => this.onEditorFocusChange(), true);

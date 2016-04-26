@@ -477,6 +477,7 @@ export function registerContributions(): void {
 			linux: { primary: KeyMod.CtrlCmd | KeyMod.Shift | KeyCode.KEY_G },
 			mac: { primary: KeyMod.WinCtrl | KeyMod.Shift | KeyCode.KEY_G }
 		}),
+		'View: Show Git',
 		nls.localize('view', "View")
 	);
 
